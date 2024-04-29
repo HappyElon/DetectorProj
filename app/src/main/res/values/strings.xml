@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">DetectorProj</string>
+    <string name="app_name">Detector App</string>
+    <string name="gpu">GPU</string>
+    <string name="completionStatus">completionStatus</string>
 </resources>
