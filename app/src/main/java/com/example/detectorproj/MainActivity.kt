@@ -24,11 +24,20 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.detectorproj.Constants.CAT
 import com.example.detectorproj.Constants.LABELS_PATH
 import com.example.detectorproj.Constants.MODEL_PATH
 import com.example.detectorproj.databinding.ActivityMainBinding
+import com.google.firebase.crashlytics.buildtools.reloc.org.apache.http.client.HttpClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.WebSocket
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URI
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -36,14 +45,20 @@ import java.util.concurrent.Executors
 lateinit var completionDetectorTextView: TextView
 @SuppressLint("StaticFieldLeak")
 lateinit var takeAPhotoButton: ImageButton
+@SuppressLint("StaticFieldLeak")
+lateinit var connectToWebSocketButton: ImageButton
 
 class MainActivity : AppCompatActivity(), Detector.DetectorListener {
+
+    private val PERMISSION_REQUEST_CODE = 101
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var previewView: View
     private lateinit var root: View
     private lateinit var previewBitmap: Bitmap
     private lateinit var overlayBitmap: Bitmap
     private val isFrontCamera = false
+    private val client = OkHttpClient()
 
     private var preview: Preview? = null
     private var imageAnalyzer: ImageAnalysis? = null
@@ -60,6 +75,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         completionDetectorTextView = findViewById(R.id.completionDetector)
         takeAPhotoButton = findViewById(R.id.takePhotoButton)
+        connectToWebSocketButton = findViewById(R.id.connectButton)
         previewView = findViewById(R.id.view_finder)
         root = findViewById(R.id.camera_container)
 
@@ -79,6 +95,53 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         takeAPhotoButton.setOnClickListener {
             saveScreenshot(root)
+        }
+
+        connectToWebSocketButton.setOnClickListener {
+            if (checkPermissions()){
+                connectToWebSocket(client)
+            } else {
+                requestPermissions()
+            }
+        }
+    }
+
+    private fun connectToWebSocket(client: OkHttpClient){
+        Log.d("PieSocket","Connecting")
+
+        val request: Request = Request
+            .Builder()
+            .url("ws://192.168.1.2:8050/ws/save_result")
+            .build()
+        val listener = WebSocketListener()
+        val ws: WebSocket = client.newWebSocket(request, listener)
+
+        ws.send("{\"username\":\"admin\", \"password\":\"admin\"}")
+        ws.send(listener.createJsonRequest())
+
+        val filename = "cat_to_send.jpg"
+        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
+        val file = File(directory, filename)
+        Log.i("file check", file.toString())
+        listener.sendFileInChunks(ws, file.toString())
+    }
+
+    private fun checkPermissions(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestPermissions() {
+        ActivityCompat.requestPermissions(this,
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+            PERMISSION_REQUEST_CODE)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            connectToWebSocket(client)
+        } else {
+            Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
         }
     }
 
