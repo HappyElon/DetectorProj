@@ -115,7 +115,7 @@ class Detector(
         if (numChannel == 0) return
         if (numElements == 0) return
 
-        var inferenceTime = SystemClock.uptimeMillis()
+        inferenceTime = SystemClock.uptimeMillis()
 
         val resizedBitmap = Bitmap.createScaledBitmap(frame, tensorWidth, tensorHeight, false)
 
@@ -128,14 +128,14 @@ class Detector(
         interpreter?.run(imageBuffer, output.buffer)
 
         val bestBoxes = bestBox(output.floatArray)
-        inferenceTime = SystemClock.uptimeMillis() - inferenceTime
+        inferenceTime = SystemClock.uptimeMillis() - inferenceTime!!
 
         if (bestBoxes == null) {
             detectorListener.onEmptyDetect()
             return
         }
 
-        detectorListener.onDetect(bestBoxes, inferenceTime)
+        detectorListener.onDetect(bestBoxes, inferenceTime!!) //
     }
 
     private fun bestBox(array: FloatArray) : List<BoundingBox>? {
@@ -196,19 +196,37 @@ class Detector(
 
         while(sortedBoxes.isNotEmpty()) {
             val first = sortedBoxes.first()
+
             if (maxCNFforAntenna < first.cnf && first.clsName == "antenna"){
                 maxCNFforAntenna = first.cnf
                 selectedBoxes.add(first)
+
+                antenna_x1 = first.x1
+                antenna_x2 = first.x2
+                antenna_y1 = first.y1
+                antenna_y2 = first.y2
+                antennaConf = first.cnf
             }
             if(maxCNFforModule < first.cnf && first.clsName == "module"){
                 maxCNFforModule = first.cnf
                 selectedBoxes.add(first)
+
+                module_x1 = first.x1
+                module_x2 = first.x2
+                module_y1 = first.y1
+                module_y2 = first.y2
+                moduleConf = first.cnf
             }
+
             if (first.clsName == "complete"){
                 changeButtonStatus("complete")
+                currentStatus = true
+                currentFirstCnf = first.cnf
             }
             if (first.clsName == "incomplete"){
                 changeButtonStatus("incomplete")
+                currentStatus = false
+                currentFirstCnf = 0F
             }
             detectedObjectType = first.clsName
             Log.i("LOG: ", detectedObjectType)
@@ -251,5 +269,22 @@ class Detector(
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
         private const val CONFIDENCE_THRESHOLD = 0.3F
         private const val IOU_THRESHOLD = 0.5F
+
+        var currentFirstCnf: Float? = null
+        var currentStatus: Boolean? = null
+        var inferenceTime: Long? = null
+
+        var antenna_x1: Float? = null
+        var antenna_x2: Float? = null
+        var antenna_y1: Float? = null
+        var antenna_y2: Float? = null
+
+        var module_x1: Float? = null
+        var module_x2: Float? = null
+        var module_y1: Float? = null
+        var module_y2: Float? = null
+
+        var antennaConf: Float? = null
+        var moduleConf: Float? = null
     }
 }

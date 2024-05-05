@@ -4,33 +4,46 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
+import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCapture.OnImageSavedCallback
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.detectorproj.Constants.CAT
 import com.example.detectorproj.Constants.LABELS_PATH
 import com.example.detectorproj.Constants.MODEL_PATH
+import com.example.detectorproj.Constants.URL_BASE
+import com.example.detectorproj.Constants.sendloginfo
 import com.example.detectorproj.databinding.ActivityMainBinding
 import com.google.firebase.crashlytics.buildtools.reloc.org.apache.http.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -38,6 +51,8 @@ import okhttp3.WebSocket
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URI
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -53,7 +68,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     private val PERMISSION_REQUEST_CODE = 101
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var previewView: View
+    private lateinit var previewView: PreviewView
     private lateinit var root: View
     private lateinit var previewBitmap: Bitmap
     private lateinit var overlayBitmap: Bitmap
@@ -66,10 +81,36 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     private var cameraProvider: ProcessCameraProvider? = null
     private var detector: Detector? = null
 
+    private val viewModel by viewModels<MainViewModel>()
+
+    private var imageCapture: ImageCapture? = null
+
+    private lateinit var outputDirectory: File
     private lateinit var cameraExecutor: ExecutorService
+
+    private val TAG = "CameraXBasic"
+    private val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+    private val REQUEST_CODE_PERMISSIONS = 10
+
+    companion object {
+        private const val TAG = "Camera"
+        private const val REQUEST_CODE_PERMISSIONS = 10
+        private val REQUIRED_PERMISSIONS = mutableListOf (
+            Manifest.permission.CAMERA
+        ).toTypedArray()
+
+        var photoFile: File? = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        installSplashScreen().apply {
+            setKeepOnScreenCondition {
+                !viewModel.isReady.value
+            }
+        }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -80,6 +121,11 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         root = findViewById(R.id.camera_container)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+        )
 
         cameraExecutor.execute {
             detector = Detector(baseContext, MODEL_PATH, LABELS_PATH, this)
@@ -94,36 +140,32 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         bindListeners()
 
         takeAPhotoButton.setOnClickListener {
-            saveScreenshot(root)
+            takePhoto()
         }
 
-        connectToWebSocketButton.setOnClickListener {
-            if (checkPermissions()){
-                connectToWebSocket(client)
-            } else {
-                requestPermissions()
-            }
-        }
+//        connectToWebSocketButton.setOnClickListener {
+//
+//        }
+        outputDirectory = getOutputDirectory()
     }
 
     private fun connectToWebSocket(client: OkHttpClient){
-        Log.d("PieSocket","Connecting")
+        Log.d("WebSocket","Connecting")
 
         val request: Request = Request
             .Builder()
-            .url("ws://192.168.1.2:8050/ws/save_result")
+            .url(URL_BASE)
             .build()
         val listener = WebSocketListener()
         val ws: WebSocket = client.newWebSocket(request, listener)
-
-        ws.send("{\"username\":\"admin\", \"password\":\"admin\"}")
+        ws.send(sendloginfo)
         ws.send(listener.createJsonRequest())
 
-        val filename = "cat_to_send.jpg"
-        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
-        val file = File(directory, filename)
-        Log.i("file check", file.toString())
-        listener.sendFileInChunks(ws, file.toString())
+//        val filename = photoFile
+//        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
+//        val file = File(directory, filename.toString())
+        Log.i("file check", photoFile.toString())
+        listener.sendFileInChunks(ws, photoFile.toString())
     }
 
     private fun checkPermissions(): Boolean {
@@ -145,50 +187,113 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
     }
 
-    private fun saveScreenshot(view: View) {
-        val screenshot = takeScreenshot(view)
-        val croppedScreenshot = cropBitmap(screenshot)
-        if (saveBitmap(croppedScreenshot)) {
-            Toast.makeText(this, "Screenshot saved", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "Failed to save screenshot", Toast.LENGTH_SHORT).show()
+    private fun getOutputDirectory(): File {
+        val mediaDir = externalMediaDirs.firstOrNull()?.let {
+            File(it, resources.getString(R.string.app_name)).apply {
+                mkdir()
+            }
         }
+        return if (mediaDir != null && mediaDir.exists()) mediaDir
+        else filesDir
+
     }
 
-    private fun takeScreenshot(view: View): Bitmap {
-        view.setDrawingCacheEnabled(true);
-        val bitmap = Bitmap.createBitmap(view.drawingCache)
-        view.setDrawingCacheEnabled(false)
-        /* val bitmap = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        root.draw(canvas) */
-        return bitmap
+    private fun takePhoto() {
+
+        val imageCapture = imageCapture?:return
+
+        photoFile = File(outputDirectory,
+            SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())+".jpg")
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile!!).build() // !! added remove if not needed
+
+        imageCapture.takePicture(
+            outputOptions, ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageSavedCallback {
+                override fun onError(exc: ImageCaptureException) {
+                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                }
+
+                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    val savedUri = Uri.fromFile(photoFile)
+                    val msg = "Photo capture succeeded: $savedUri"
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, msg)
+
+                    if (checkPermissions()){
+                        connectToWebSocket(client)
+                    } else {
+                        requestPermissions()
+                    }
+                }
+            }
+        )
     }
 
-    private fun cropBitmap(bitmap: Bitmap): Bitmap {
-        // val croppedHeight = bitmap.height - previewView.height // Высота, которую нужно обрезать
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height - 200)
-    }
+//    private fun loadImageFromStorage(path: String): Bitmap {
+//        return BitmapFactory.decodeFile(path)
+//    }
 
-    private fun saveBitmap(bitmap: Bitmap): Boolean {
-        val filename = "${System.currentTimeMillis()}.jpg"
-        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
-        if (!directory.exists()) {
-            directory.mkdirs()
-        }
-        val file = File(directory, filename)
-        return try {
-            val stream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
-            stream.flush()
-            stream.close()
-            MediaStore.Images.Media.insertImage(contentResolver, file.absolutePath, file.name, file.name)
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
-    }
+//    private fun takeScreenshot(view: View): Bitmap {
+//        val bitmap: Bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+//        Log.i("LayoutParams", view.layoutParams.width.toString() + "   " +
+//                view.layoutParams.height.toString())
+//        val canvas = Canvas(bitmap)
+//        view.layout(view.left, view.top, view.right, view.bottom)
+//        view.draw(canvas)
+//        return bitmap
+//    }
+
+//    private fun combineBitmaps(bitmap1: Bitmap, bitmap2: Bitmap): Bitmap {
+//        // Create a new bitmap with the width of the first bitmap and the height of both bitmaps combined
+//        val combinedBitmap = Bitmap.createBitmap(bitmap1.width, bitmap1.height + bitmap2.height, Bitmap.Config.ARGB_8888)
+//        val canvas = Canvas(combinedBitmap)
+//
+//        // Draw the first bitmap onto the canvas
+//        canvas.drawBitmap(bitmap1, 0f, 0f, null)
+//
+//        // Draw the second bitmap below the first one
+//        canvas.drawBitmap(bitmap2, 0f, bitmap1.height.toFloat(), null)
+//
+//        return combinedBitmap
+//    }
+
+//    private fun saveScreenshot(view: View) {
+//        val screenshot = takeScreenshot(view)
+//        val croppedScreenshot = cropBitmap(screenshot)
+//        if (saveBitmap(croppedScreenshot)) {
+//            Toast.makeText(this, "Screenshot saved", Toast.LENGTH_SHORT).show()
+//        } else {
+//            Toast.makeText(this, "Failed to save screenshot", Toast.LENGTH_SHORT).show()
+//        }
+//    }
+
+
+//    private fun cropBitmap(bitmap: Bitmap): Bitmap {
+//        // val croppedHeight = bitmap.height - previewView.height // Высота, которую нужно обрезать
+//        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height - 200)
+//    }
+//
+//    private fun saveBitmap(bitmap: Bitmap): Boolean {
+//        val filename = "${System.currentTimeMillis()}.jpg"
+//        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
+//        if (!directory.exists()) {
+//            Log.i("Before mkdir", directory.toString())
+//            directory.mkdirs()
+//            Log.i("Before mkdir", "234")
+//        }
+//        val file = File(directory, filename)
+//        return try {
+//            val stream = FileOutputStream(file)
+//            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
+//            stream.flush()
+//            stream.close()
+//            MediaStore.Images.Media.insertImage(contentResolver, file.absolutePath, file.name, file.name)
+//            true
+//        } catch (e: Exception) {
+//            Log.e("SAVE ERROR", e.toString())
+//            e.printStackTrace()
+//            false
+//        }
+//    }
 
     private fun bindListeners() {
         binding.apply {
@@ -226,13 +331,21 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         preview =  Preview.Builder()
             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .setTargetRotation(rotation)
-            .build()
+            .build(). also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
 
         imageAnalyzer = ImageAnalysis.Builder()
             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .setTargetRotation(binding.viewFinder.display.rotation)
             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+            .build()
+
+        imageCapture = ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+            .setTargetRotation(rotation)
             .build()
 
         imageAnalyzer?.setAnalyzer(cameraExecutor) { imageProxy ->
@@ -273,10 +386,16 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 this,
                 cameraSelector,
                 preview,
-                imageAnalyzer
+                imageAnalyzer,
+                imageCapture
             )
 
             preview?.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+
+//            imageCapture?.let {
+//                imageCapture ->
+//                    val
+//            }
         } catch(exc: Exception) {
             Log.e(TAG, "Use case binding failed", exc)
         }
@@ -306,14 +425,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
     }
 
-    companion object {
-        private const val TAG = "Camera"
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = mutableListOf (
-            Manifest.permission.CAMERA
-        ).toTypedArray()
-    }
-
     override fun onEmptyDetect() {
         runOnUiThread {
             binding.overlay.clear()
@@ -339,5 +450,5 @@ fun changeButtonStatus(buttonStatus: String){
         completionDetectorTextView.text = "INCOMPLETE"
         completionDetectorTextView.setTextColor(Color.RED)
     }
-
 }
+

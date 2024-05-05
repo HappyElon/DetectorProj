@@ -10,13 +10,13 @@ import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 
-
 class WebSocketListener : WebSocketListener() {
 
     private val chunkSize = 4000
+
     override fun onOpen(webSocket: WebSocket, response: Response) {
-        webSocket.send("Hello World!")
-        Log.e("burak","baglandi")
+        //webSocket.send("Hello World!")
+        Log.e("Connection","got")
     }
 
     override fun onMessage(webSocket: WebSocket, text: String) {
@@ -53,7 +53,7 @@ class WebSocketListener : WebSocketListener() {
                 webSocket.send(ByteBuffer.wrap(bytes).toByteString())
             }
             // Indicate the end of file transmission
-            webSocket.send(ByteBuffer.wrap("{'eof':1}".toByteArray()).toByteString())
+            webSocket.send(ByteBuffer.wrap("{'eof' : 1}".toByteArray()).toByteString())
         }
     }
 
@@ -61,21 +61,21 @@ class WebSocketListener : WebSocketListener() {
         val json = JSONObject()
         json.put("image_file", JSONObject().apply {
             put("timestamp", System.currentTimeMillis().toString())
-            put("name", "name.jpg")
+            put("name", MainActivity.photoFile.toString())
         })
-        json.put("isComplete", "completion_status")
-        json.put("confidence", 0.5)
-        json.put("speedMs", 100)
+        json.put("isComplete", Detector.currentStatus)
+        json.put("confidence", Detector.currentFirstCnf.toString())
+        json.put("speedMs", Detector.inferenceTime)
         json.put("materials", listOf(
             JSONObject().apply {
                 put("mlCode", 0)
-                put("coords", listOf(0.0, 0.0, 0.0, 0.0))
-                put("conf", 0.0)
+                put("coords", listOf(Detector.antenna_x1, Detector.antenna_x2, Detector.antenna_y1, Detector.antenna_y2))
+                put("conf", Detector.antennaConf)
             },
             JSONObject().apply {
                 put("mlCode", 1)
-                put("coords", listOf(0.0, 0.0, 0.0, 0.0))
-                put("conf", 0.0)
+                put("coords", listOf(Detector.module_x1, Detector.module_x2, Detector.module_y1, Detector.module_y2))
+                put("conf", Detector.moduleConf)
             }
         ))
         return json.toString()
