@@ -129,6 +129,7 @@ class Detector(
 
         val bestBoxes = bestBox(output.floatArray)
         inferenceTime = SystemClock.uptimeMillis() - inferenceTime!!
+        latencyTime = inferenceTime
 
         if (bestBoxes == null) {
             detectorListener.onEmptyDetect()
@@ -206,8 +207,7 @@ class Detector(
                 antenna_y1 = first.y1
                 antenna_y2 = first.y2
                 antennaConf = first.cnf
-            }
-            if(maxCNFforModule < first.cnf && first.clsName == "module"){
+            } else if(maxCNFforModule < first.cnf && first.clsName == "module"){
                 maxCNFforModule = first.cnf
                 selectedBoxes.add(first)
 
@@ -218,15 +218,16 @@ class Detector(
                 moduleConf = first.cnf
             }
 
+
+
             if (first.clsName == "complete"){
                 changeButtonStatus("complete")
                 currentStatus = true
                 currentFirstCnf = first.cnf
-            }
-            if (first.clsName == "incomplete"){
+            } else if (first.clsName == "incomplete"){
                 changeButtonStatus("incomplete")
                 currentStatus = false
-                currentFirstCnf = 0F
+                currentFirstCnf = first.cnf
             }
             detectedObjectType = first.clsName
             Log.i("LOG: ", detectedObjectType)
@@ -241,8 +242,6 @@ class Detector(
                 }
             }
         }
-        maxCNFforAntenna = 0F
-        maxCNFforModule = 0F
         return selectedBoxes
     }
 
@@ -286,5 +285,7 @@ class Detector(
 
         var antennaConf: Float? = null
         var moduleConf: Float? = null
+
+        var latencyTime: Long? = null
     }
 }

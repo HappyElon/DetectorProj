@@ -64,18 +64,18 @@ class WebSocketListener : WebSocketListener() {
             put("name", MainActivity.photoFile.toString())
         })
         json.put("isComplete", Detector.currentStatus)
-        json.put("confidence", Detector.currentFirstCnf.toString())
-        json.put("speedMs", Detector.inferenceTime)
+        json.put("confidence", Detector.currentFirstCnf)
+        json.put("speedMs", Detector.latencyTime)
         json.put("materials", listOf(
             JSONObject().apply {
                 put("mlCode", 0)
-                put("coords", listOf(Detector.antenna_x1, Detector.antenna_x2, Detector.antenna_y1, Detector.antenna_y2))
-                put("conf", Detector.antennaConf)
+                put("coords", listOf(Detector.module_x1, Detector.module_x2, Detector.module_y1, Detector.module_y2))
+                put("conf", Detector.moduleConf)
             },
             JSONObject().apply {
                 put("mlCode", 1)
-                put("coords", listOf(Detector.module_x1, Detector.module_x2, Detector.module_y1, Detector.module_y2))
-                put("conf", Detector.moduleConf)
+                put("coords", listOf(Detector.antenna_x1, Detector.antenna_x2, Detector.antenna_y1, Detector.antenna_y2))
+                put("conf", Detector.antennaConf)
             }
         ))
         return json.toString()

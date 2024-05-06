@@ -60,8 +60,6 @@ import java.util.concurrent.Executors
 lateinit var completionDetectorTextView: TextView
 @SuppressLint("StaticFieldLeak")
 lateinit var takeAPhotoButton: ImageButton
-@SuppressLint("StaticFieldLeak")
-lateinit var connectToWebSocketButton: ImageButton
 
 class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
@@ -116,7 +114,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         completionDetectorTextView = findViewById(R.id.completionDetector)
         takeAPhotoButton = findViewById(R.id.takePhotoButton)
-        connectToWebSocketButton = findViewById(R.id.connectButton)
         previewView = findViewById(R.id.view_finder)
         root = findViewById(R.id.camera_container)
 
@@ -142,10 +139,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         takeAPhotoButton.setOnClickListener {
             takePhoto()
         }
-
-//        connectToWebSocketButton.setOnClickListener {
-//
-//        }
         outputDirectory = getOutputDirectory()
     }
 
@@ -160,10 +153,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         val ws: WebSocket = client.newWebSocket(request, listener)
         ws.send(sendloginfo)
         ws.send(listener.createJsonRequest())
-
-//        val filename = photoFile
-//        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
-//        val file = File(directory, filename.toString())
         Log.i("file check", photoFile.toString())
         listener.sendFileInChunks(ws, photoFile.toString())
     }
@@ -227,73 +216,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         )
     }
-
-//    private fun loadImageFromStorage(path: String): Bitmap {
-//        return BitmapFactory.decodeFile(path)
-//    }
-
-//    private fun takeScreenshot(view: View): Bitmap {
-//        val bitmap: Bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-//        Log.i("LayoutParams", view.layoutParams.width.toString() + "   " +
-//                view.layoutParams.height.toString())
-//        val canvas = Canvas(bitmap)
-//        view.layout(view.left, view.top, view.right, view.bottom)
-//        view.draw(canvas)
-//        return bitmap
-//    }
-
-//    private fun combineBitmaps(bitmap1: Bitmap, bitmap2: Bitmap): Bitmap {
-//        // Create a new bitmap with the width of the first bitmap and the height of both bitmaps combined
-//        val combinedBitmap = Bitmap.createBitmap(bitmap1.width, bitmap1.height + bitmap2.height, Bitmap.Config.ARGB_8888)
-//        val canvas = Canvas(combinedBitmap)
-//
-//        // Draw the first bitmap onto the canvas
-//        canvas.drawBitmap(bitmap1, 0f, 0f, null)
-//
-//        // Draw the second bitmap below the first one
-//        canvas.drawBitmap(bitmap2, 0f, bitmap1.height.toFloat(), null)
-//
-//        return combinedBitmap
-//    }
-
-//    private fun saveScreenshot(view: View) {
-//        val screenshot = takeScreenshot(view)
-//        val croppedScreenshot = cropBitmap(screenshot)
-//        if (saveBitmap(croppedScreenshot)) {
-//            Toast.makeText(this, "Screenshot saved", Toast.LENGTH_SHORT).show()
-//        } else {
-//            Toast.makeText(this, "Failed to save screenshot", Toast.LENGTH_SHORT).show()
-//        }
-//    }
-
-
-//    private fun cropBitmap(bitmap: Bitmap): Bitmap {
-//        // val croppedHeight = bitmap.height - previewView.height // Высота, которую нужно обрезать
-//        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height - 200)
-//    }
-//
-//    private fun saveBitmap(bitmap: Bitmap): Boolean {
-//        val filename = "${System.currentTimeMillis()}.jpg"
-//        val directory = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Screenshots")
-//        if (!directory.exists()) {
-//            Log.i("Before mkdir", directory.toString())
-//            directory.mkdirs()
-//            Log.i("Before mkdir", "234")
-//        }
-//        val file = File(directory, filename)
-//        return try {
-//            val stream = FileOutputStream(file)
-//            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream)
-//            stream.flush()
-//            stream.close()
-//            MediaStore.Images.Media.insertImage(contentResolver, file.absolutePath, file.name, file.name)
-//            true
-//        } catch (e: Exception) {
-//            Log.e("SAVE ERROR", e.toString())
-//            e.printStackTrace()
-//            false
-//        }
-//    }
 
     private fun bindListeners() {
         binding.apply {
@@ -392,10 +314,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
             preview?.setSurfaceProvider(binding.viewFinder.surfaceProvider)
 
-//            imageCapture?.let {
-//                imageCapture ->
-//                    val
-//            }
         } catch(exc: Exception) {
             Log.e(TAG, "Use case binding failed", exc)
         }
@@ -451,4 +369,3 @@ fun changeButtonStatus(buttonStatus: String){
         completionDetectorTextView.setTextColor(Color.RED)
     }
 }
-
