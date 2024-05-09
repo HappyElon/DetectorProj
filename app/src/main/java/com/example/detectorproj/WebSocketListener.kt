@@ -94,4 +94,13 @@ open class WebSocketListener : WebSocketListener() {
 
         return json.toString()
     }
+
+    fun createJsonLoginRequest(userdata: String, userpassword: String): String {
+        val json = JSONObject()
+
+        json.put("userdata", userdata)
+        json.put("userpassword", userpassword)
+
+        return json.toString()
+    }
 }

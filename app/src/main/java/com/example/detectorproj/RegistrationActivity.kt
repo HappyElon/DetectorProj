@@ -43,7 +43,7 @@ class RegistrationActivity: AppCompatActivity() {
             if (json.length() > 0){
                 if (json.get("ok") == true){
                     upperText.text = "Регистрация успешна"
-                    upperText.setTextColor(Color.GREEN)
+                    upperText.setTextColor(Color.WHITE)
 
                     val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)
@@ -83,19 +83,4 @@ class RegistrationActivity: AppCompatActivity() {
 
         return json1
     }
-
-//    private fun connectToWebSocket(client: OkHttpClient, username: String, useremail: String, userpassword: String): JSONObject{
-//        Log.d("WebSocket for registration","Connecting")
-//
-//        val request: Request = Request
-//            .Builder()
-//            .url(Constants.URL_USER_CREATOR)
-//            .build()
-//        val listener = WebSocketListener()
-//        val ws: WebSocket = client.newWebSocket(request, listener)
-//        ws.send(Constants.sendloginfo)
-//        ws.send(listener.createJsonRegistrationRequest(username, useremail, userpassword))
-//
-//        return json1
-//    }
 }

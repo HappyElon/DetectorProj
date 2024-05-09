@@ -7,10 +7,41 @@ import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import android.graphics.Color
+import android.util.Log
 import androidx.room.Entity
 import androidx.room.Insert
 import androidx.room.PrimaryKey
-import androidx.room.Query
+import com.example.detectorproj.Constants.URL_USER_LOGIN
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.WebSocket
+import org.json.JSONObject
+import java.util.concurrent.CountDownLatch
+import com.google.gson.annotations.SerializedName
+import retrofit2.Call
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import retrofit2.http.Query
+
+data class RequestDataModel(
+    @SerializedName("ok") val ok: Boolean,
+    @SerializedName("error") val error: String?,
+    @SerializedName("errorCode") val errorCode: Int?,
+    @SerializedName("data") val data: Data?
+)
+
+data class Data(
+    @SerializedName("user_id") val id: String
+)
+
+interface ApiService {
+    @GET(URL_USER_LOGIN)
+    fun fetchData(
+        @Query("userdata") username: String,
+        @Query("userpassword") password: String
+    ): Call<RequestDataModel>
+}
 
 class LoginActivity: AppCompatActivity() {
 
@@ -19,11 +50,10 @@ class LoginActivity: AppCompatActivity() {
     private lateinit var loginButton: Button
     private lateinit var registrationButton: Button
     private lateinit var loginVerifier: TextView
-    private val logins_list = arrayOf("admin", "user")
-    private val passwords_list = arrayOf("admin", "user")
+    private val client = OkHttpClient()
 
     companion object {
-        var isLogged = false
+        var result = ""
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,18 +70,13 @@ class LoginActivity: AppCompatActivity() {
             val loginText = loginEnterField.text.toString()
             val passwordText = passwordEnterField.text.toString()
 
-            for ((login, password) in logins_list.zip(passwords_list)){
-                if ((loginText == login) && (passwordText == password)){
-                    // вставить функцию что типо всё залогинилось и вообще отлично
-                    loginVerifier.text = "Вход в систему"
-                    loginVerifier.setTextColor(Color.GREEN)
-                    isLogged = true
+            connectToRest(loginText, passwordText) { isLogged ->
+                if (isLogged) {
+                    loginVerifier.text = "Авторизация успешна"
+                    loginVerifier.setTextColor(Color.WHITE)
 
                     val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)
-                } else {
-                    loginVerifier.text = "Данные неверны"
-                    loginVerifier.setTextColor(Color.RED)
                 }
             }
         }
@@ -60,5 +85,38 @@ class LoginActivity: AppCompatActivity() {
             val intent = Intent(this, RegistrationActivity::class.java)
             startActivity(intent)
         }
+    }
+
+    private fun connectToRest(userdata: String, userpassword: String, callback: (Boolean) -> Unit) {
+        val retrofit = Retrofit.Builder()
+            .baseUrl(URL_USER_LOGIN)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val service = retrofit.create(ApiService::class.java)
+
+        val call = service.fetchData(userdata, userpassword)
+
+        call.enqueue(object : retrofit2.Callback<RequestDataModel> {
+            override fun onResponse(call: Call<RequestDataModel>, response: retrofit2.Response<RequestDataModel>) {
+                if (response.isSuccessful) {
+                    val data = response.body()
+                    println("Успешный ответ: $data")
+                    Log.i("RESULT BODY", response.body()?.ok.toString())
+                    result = response.body()?.ok.toString()
+                    callback(result == "true")
+                } else {
+                    println("Ошибка: ${response.errorBody()?.string()}")
+                    result = "false"
+                    callback(false)
+                }
+            }
+
+            override fun onFailure(call: Call<RequestDataModel>, t: Throwable) {
+                println("Ошибка: ${t.message}")
+                result = "false"
+                callback(false)
+            }
+        })
     }
 }
