@@ -2,6 +2,7 @@ package com.example.detectorproj
 
 import android.util.Log
 import android.widget.Toast
+import kotlinx.coroutines.delay
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
@@ -10,9 +11,14 @@ import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 
-class WebSocketListener : WebSocketListener() {
+var json1: JSONObject = JSONObject()
 
+open class WebSocketListener : WebSocketListener() {
     private val chunkSize = 4000
+
+    companion object {
+        private const val NORMAL_CLOSURE_STATUS = 1000
+    }
 
     override fun onOpen(webSocket: WebSocket, response: Response) {
         //webSocket.send("Hello World!")
@@ -21,6 +27,8 @@ class WebSocketListener : WebSocketListener() {
 
     override fun onMessage(webSocket: WebSocket, text: String) {
         output("Received : $text")
+        json1 = JSONObject(text)
+        Log.i("JSON RECEIVED", json1.toString())
     }
 
     override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -35,10 +43,6 @@ class WebSocketListener : WebSocketListener() {
 
     fun output(text: String?) {
         Log.d("WebSocket", text!!)
-    }
-
-    companion object {
-        private const val NORMAL_CLOSURE_STATUS = 1000
     }
 
     fun sendFileInChunks(webSocket: WebSocket, filePath: String) {
@@ -78,6 +82,16 @@ class WebSocketListener : WebSocketListener() {
                 put("conf", Detector.antennaConf)
             }
         ))
+        return json.toString()
+    }
+
+    fun createJsonRegistrationRequest(username: String, useremail: String, userpassword: String): String {
+        val json = JSONObject()
+
+        json.put("username", username)
+        json.put("useremail", useremail)
+        json.put("userpassword", userpassword)
+
         return json.toString()
     }
 }

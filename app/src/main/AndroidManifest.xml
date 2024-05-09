@@ -56,6 +56,11 @@
             android:theme="@style/Base.Theme.DetectorProj">
 
         </activity>
+        <activity
+            android:name=".RegistrationActivity"
+            android:theme="@style/Base.Theme.DetectorProj">
+
+        </activity>
         <uses-native-library
             android:name="libOpenCL.so"
             android:required="false"/>

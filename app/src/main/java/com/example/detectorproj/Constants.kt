@@ -6,4 +6,5 @@ object Constants {
     const val CAT = "cat_to_send.jpg"
     const val sendloginfo = "{\"username\":\"admin\", \"password\":\"admin\"}"
     const val URL_BASE = "ws://192.168.1.2:8050/ws/save_result"
+    const val URL_USER_CREATOR = "ws://192.168.1.2:8050/ws/create_user"
 }

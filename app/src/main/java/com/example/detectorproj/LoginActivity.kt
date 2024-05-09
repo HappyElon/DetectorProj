@@ -17,6 +17,7 @@ class LoginActivity: AppCompatActivity() {
     private lateinit var loginEnterField: EditText
     private lateinit var passwordEnterField: EditText
     private lateinit var loginButton: Button
+    private lateinit var registrationButton: Button
     private lateinit var loginVerifier: TextView
     private val logins_list = arrayOf("admin", "user")
     private val passwords_list = arrayOf("admin", "user")
@@ -32,6 +33,7 @@ class LoginActivity: AppCompatActivity() {
         loginEnterField = findViewById(R.id.loginEnter)
         passwordEnterField = findViewById(R.id.passwordEnter)
         loginButton = findViewById(R.id.enterButton)
+        registrationButton = findViewById(R.id.registrationButton)
         loginVerifier = findViewById(R.id.correctLoginVerifier)
 
         loginButton.setOnClickListener{
@@ -52,6 +54,11 @@ class LoginActivity: AppCompatActivity() {
                     loginVerifier.setTextColor(Color.RED)
                 }
             }
+        }
+
+        registrationButton.setOnClickListener {
+            val intent = Intent(this, RegistrationActivity::class.java)
+            startActivity(intent)
         }
     }
 }
