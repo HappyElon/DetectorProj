@@ -4,4 +4,6 @@
     <string name="completionStatus">completionStatus</string>
     <string name="open">Open</string>
     <string name="close">Close</string>
+    <string name="HeaderUsername">Unknown</string>
+    <string name="HeaderEmail">Unknown</string>
 </resources>

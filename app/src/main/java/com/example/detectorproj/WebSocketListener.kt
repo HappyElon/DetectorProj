@@ -82,6 +82,7 @@ open class WebSocketListener : WebSocketListener() {
                 put("conf", Detector.antennaConf)
             }
         ))
+        json.put("username", LoginActivity.global_username)
         return json.toString()
     }
 

@@ -8,6 +8,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import android.graphics.Color
 import android.util.Log
+import android.view.LayoutInflater
 import androidx.room.Entity
 import androidx.room.Insert
 import androidx.room.PrimaryKey
@@ -18,6 +19,7 @@ import okhttp3.WebSocket
 import org.json.JSONObject
 import java.util.concurrent.CountDownLatch
 import com.google.gson.annotations.SerializedName
+import org.w3c.dom.Text
 import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -32,7 +34,9 @@ data class RequestDataModel(
 )
 
 data class Data(
-    @SerializedName("user_id") val id: String
+    @SerializedName("user_id") val user_id: String,
+    @SerializedName("user_name") val user_name: String,
+    @SerializedName("user_email") val user_email: String
 )
 
 interface ApiService {
@@ -50,10 +54,12 @@ class LoginActivity: AppCompatActivity() {
     private lateinit var loginButton: Button
     private lateinit var registrationButton: Button
     private lateinit var loginVerifier: TextView
-    private val client = OkHttpClient()
+    private lateinit var header_title: TextView
 
     companion object {
         var result = ""
+        var global_username = "Unknown"
+        var global_email = "Unknown"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +72,8 @@ class LoginActivity: AppCompatActivity() {
         registrationButton = findViewById(R.id.registrationButton)
         loginVerifier = findViewById(R.id.correctLoginVerifier)
 
+        //header_title = header.findViewById(R.id.header_title)
+
         loginButton.setOnClickListener{
             val loginText = loginEnterField.text.toString()
             val passwordText = passwordEnterField.text.toString()
@@ -74,6 +82,8 @@ class LoginActivity: AppCompatActivity() {
                 if (isLogged) {
                     loginVerifier.text = "Авторизация успешна"
                     loginVerifier.setTextColor(Color.WHITE)
+                    Log.i("global username", global_username)
+                    //header_title.text = global_username
 
                     val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)
@@ -104,6 +114,8 @@ class LoginActivity: AppCompatActivity() {
                     println("Успешный ответ: $data")
                     Log.i("RESULT BODY", response.body()?.ok.toString())
                     result = response.body()?.ok.toString()
+                    global_username = response.body()?.data?.user_name.toString()
+                    global_email = response.body()?.data?.user_email.toString()
                     callback(result == "true")
                 } else {
                     println("Ошибка: ${response.errorBody()?.string()}")

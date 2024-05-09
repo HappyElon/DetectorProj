@@ -8,9 +8,10 @@
     android:gravity="bottom">
     
     <TextView
+        android:id="@+id/header_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Name"
+        android:text="@string/HeaderUsername"
         android:textColor="#fff"
         android:textSize="30dp"
         android:textStyle="bold"/>
@@ -18,7 +19,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="guide"
+        android:text="@string/HeaderEmail"
         android:textSize="18dp"
         android:textColor="#fff"/>
 
