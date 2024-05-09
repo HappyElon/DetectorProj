@@ -78,7 +78,7 @@ class ReportActivity: AppCompatActivity(){
         val recyclerView: RecyclerView = findViewById(R.id.reportsRecycler)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        adapter = CustomRecyclerAdapter(mutableListOf()) // пустой список при создании адаптера
+        adapter = CustomRecyclerAdapter(mutableListOf())
         recyclerView.adapter = adapter
 
         connectToRest()
@@ -102,8 +102,8 @@ class ReportActivity: AppCompatActivity(){
                     Log.i("RESULT BODY", response.body()?.ok.toString())
                     transmitData = response.body()?.data
                     transmitData?.let {
-                        adapter.names = fillList(it).toMutableList() // обновляем список данных в адаптере
-                        adapter.notifyDataSetChanged() // уведомляем адаптер об изменениях
+                        adapter.names = fillList(it).toMutableList()
+                        adapter.notifyDataSetChanged()
                     }
                 } else {
                     println("Ошибка: ${response.errorBody()?.string()}")
