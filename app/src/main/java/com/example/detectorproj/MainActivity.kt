@@ -168,16 +168,9 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 R.id.home -> {
                     Toast.makeText(this, "Home", Toast.LENGTH_SHORT).show()
                 }
-                R.id.contact -> {
+                R.id.reports -> {
                     val intent = Intent(this, ReportActivity::class.java)
                     startActivity(intent)
-                }
-                R.id.reports -> {
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    val uri = Uri.parse("content://Android/media/com.example.detectorproj/Detector App")
-                    intent.setDataAndType(uri, "image/*")
-                    startActivity(intent)
-                    // ИСПРАВИТЬ, ОНО ОТКРЫВАЕТ КАРТИНКУ КОТОРОЙ НЕТ
                 }
                 R.id.About -> {
                     val intent = Intent(this, InfoActivity::class.java)

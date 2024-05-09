@@ -8,4 +8,5 @@ object Constants {
     const val URL_BASE = "ws://192.168.1.2:8050/ws/save_result"
     const val URL_USER_CREATOR = "ws://192.168.1.2:8050/ws/create_user"
     const val URL_USER_LOGIN = "http://192.168.1.2:8050/verify_user/"
+    const val URL_GET_DATA = "http://192.168.1.2:8050/get_agr_results/"
 }
