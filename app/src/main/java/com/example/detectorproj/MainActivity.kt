@@ -2,7 +2,9 @@ package com.example.detectorproj
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -11,8 +13,11 @@ import android.graphics.Matrix
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.os.PersistableBundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.Gravity
+import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
@@ -20,6 +25,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.Camera
@@ -34,12 +40,15 @@ import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import com.example.detectorproj.Constants.CAT
 import com.example.detectorproj.Constants.LABELS_PATH
 import com.example.detectorproj.Constants.MODEL_PATH
 import com.example.detectorproj.Constants.URL_BASE
 import com.example.detectorproj.Constants.sendloginfo
 import com.example.detectorproj.databinding.ActivityMainBinding
+import com.google.android.material.navigation.NavigationView
 import com.google.firebase.crashlytics.buildtools.reloc.org.apache.http.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -56,6 +65,7 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+
 @SuppressLint("StaticFieldLeak")
 lateinit var completionDetectorTextView: TextView
 @SuppressLint("StaticFieldLeak")
@@ -65,11 +75,13 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
     private val PERMISSION_REQUEST_CODE = 101
 
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var navigationView: NavigationView
+    private lateinit var drawerToggle: ActionBarDrawerToggle
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var previewView: PreviewView
     private lateinit var root: View
-    private lateinit var previewBitmap: Bitmap
-    private lateinit var overlayBitmap: Bitmap
     private val isFrontCamera = false
     private val client = OkHttpClient()
 
@@ -100,6 +112,31 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         var photoFile: File? = null
     }
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (drawerToggle.onOptionsItemSelected(item)){
+            return true
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    override fun onBackPressed() {
+        if(drawerLayout.isDrawerOpen(GravityCompat.START)){
+            drawerLayout.closeDrawer(GravityCompat.START)
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            setContentView(R.layout.activity_main_land)
+        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+            setContentView(R.layout.activity_main)
+        }
+        //startCamera()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -112,10 +149,47 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+
+        // пологировать это
+
         completionDetectorTextView = findViewById(R.id.completionDetector)
         takeAPhotoButton = findViewById(R.id.takePhotoButton)
         previewView = findViewById(R.id.view_finder)
-        root = findViewById(R.id.camera_container)
+        root = findViewById(R.id.drawer_layout)
+
+        drawerLayout = findViewById(R.id.drawer_layout)
+        navigationView = findViewById(R.id.navigationView)
+        drawerToggle = ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close)
+        drawerLayout.addDrawerListener(drawerToggle)
+        drawerToggle.syncState()
+        getSupportActionBar()?.setDisplayHomeAsUpEnabled(true)
+        navigationView.setNavigationItemSelectedListener(  NavigationView.OnNavigationItemSelectedListener() {
+            when(it.itemId) {
+                R.id.home -> {
+                    Toast.makeText(this, "Home", Toast.LENGTH_SHORT).show()
+                }
+                R.id.contact -> {
+                    val intent = Intent(this, ReportActivity::class.java)
+                    startActivity(intent)
+                }
+                R.id.reports -> {
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    val uri = Uri.parse("content://Android/media/com.example.detectorproj/Detector App")
+                    intent.setDataAndType(uri, "image/*")
+                    startActivity(intent)
+                    // ИСПРАВИТЬ, ОНО ОТКРЫВАЕТ КАРТИНКУ КОТОРОЙ НЕТ
+                }
+                R.id.About -> {
+                    val intent = Intent(this, InfoActivity::class.java)
+                    startActivity(intent)
+                }
+                R.id.login -> {
+                    val intent = Intent(this, LoginActivity::class.java)
+                    startActivity(intent)
+                }
+            }
+            return@OnNavigationItemSelectedListener false
+        })
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -134,7 +208,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
-        bindListeners()
+        //bindListeners()
 
         takeAPhotoButton.setOnClickListener {
             takePhoto()
@@ -217,20 +291,20 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         )
     }
 
-    private fun bindListeners() {
-        binding.apply {
-            isGpu.setOnCheckedChangeListener { buttonView, isChecked ->
-                cameraExecutor.submit {
-                    detector?.setup(isGpu = isChecked)
-                }
-                if (isChecked) {
-                    buttonView.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.orange))
-                } else {
-                    buttonView.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.gray))
-                }
-            }
-        }
-    }
+//    private fun bindListeners() {
+//        binding.apply {
+//            isGpu.setOnCheckedChangeListener { buttonView, isChecked ->
+//                cameraExecutor.submit {
+//                    detector?.setup(isGpu = isChecked)
+//                }
+//                if (isChecked) {
+//                    buttonView.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.orange))
+//                } else {
+//                    buttonView.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.gray))
+//                }
+//            }
+//        }
+//    }
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -238,12 +312,13 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             cameraProvider  = cameraProviderFuture.get()
             bindCameraUseCases()
         }, ContextCompat.getMainExecutor(this))
+
     }
 
     private fun bindCameraUseCases() {
         val cameraProvider = cameraProvider ?: throw IllegalStateException("Camera initialization failed.")
 
-        val rotation = binding.viewFinder.display.rotation
+        val rotation = binding.viewFinder.display?.rotation?: return
 
         val cameraSelector = CameraSelector
             .Builder()
@@ -334,12 +409,27 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         cameraExecutor.shutdown()
     }
 
+//    override fun onStart() {
+//        super.onStart()
+//        completionDetectorTextView = findViewById(R.id.completionDetector)
+//        takeAPhotoButton = findViewById(R.id.takePhotoButton)
+//        previewView = findViewById(R.id.view_finder)
+//        root = findViewById(R.id.drawer_layout)
+//    }
+
     override fun onResume() {
         super.onResume()
+
+//        completionDetectorTextView = findViewById(R.id.completionDetector)
+//        takeAPhotoButton = findViewById(R.id.takePhotoButton)
+//        previewView = findViewById(R.id.view_finder)
+//        root = findViewById(R.id.drawer_layout)
+
         if (allPermissionsGranted()){
             startCamera()
         } else {
             requestPermissionLauncher.launch(REQUIRED_PERMISSIONS)
+            //ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS) // non-original
         }
     }
 

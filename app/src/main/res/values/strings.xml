@@ -2,4 +2,6 @@
     <string name="app_name">Detector App</string>
     <string name="gpu">GPU</string>
     <string name="completionStatus">completionStatus</string>
+    <string name="open">Open</string>
+    <string name="close">Close</string>
 </resources>
