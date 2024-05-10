@@ -132,3 +132,7 @@ class LoginActivity: AppCompatActivity() {
         })
     }
 }
+
+fun userDataCoder(){
+
+}

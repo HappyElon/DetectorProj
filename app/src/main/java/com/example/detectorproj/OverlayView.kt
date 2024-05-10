@@ -69,7 +69,14 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
             canvas.drawRect(left, top, right, bottom, paint)
 
-            val drawableText = (result.clsName + " " + (maxConfToSend * 100F).roundToInt() + "%")
+            var drawableText = (result.clsName + " " + (maxConfToSend * 100F).roundToInt() + "%")
+
+            if (result.clsName == "antenna"){
+                drawableText = (result.clsName + " " + (antennaConf * 100F).roundToInt() + "%")
+            } else if (result.clsName == "module"){
+                drawableText = (result.clsName + " " + (moduleConf * 100F).roundToInt() + "%")
+            }
+
 
             textBackgroundPaint.getTextBounds(drawableText, 0, drawableText.length , bounds)
             val textWidth = bounds.width()

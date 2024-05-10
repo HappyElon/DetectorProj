@@ -46,7 +46,6 @@ class CustomRecyclerAdapter(var names: List<String>) : RecyclerView
 
     class MyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val largeTextView: TextView = itemView.findViewById(R.id.textViewLarge)
-        val smallTextView: TextView = itemView.findViewById(R.id.textViewSmall)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
@@ -57,7 +56,6 @@ class CustomRecyclerAdapter(var names: List<String>) : RecyclerView
 
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
         holder.largeTextView.text = names[position]
-        holder.smallTextView.text = "кот"
     }
 
     override fun getItemCount() = names.size
@@ -117,8 +115,23 @@ class ReportActivity: AppCompatActivity(){
     }
 
     private fun fillList(receivedData: List<ReportData>): List<String> {
-        return receivedData.mapIndexed { index, reportData ->
-            "$index ${reportData.serverDate} ${reportData.username} ${reportData.completionStatus} ${reportData.cnt} ${reportData.speedMs}"
+        val headerFormat = "%-5s %-14s %-20s %-10s %-6s %-6s"
+        val header = String.format(headerFormat, "Idx", "Date", "Username", "Status", "Cnt", "Speed")
+
+        val lineFormat = "%-5s %-14s %-20s %-10s %-6s %-6s"
+        val lines = receivedData.mapIndexed { index, reportData ->
+            String.format(
+                lineFormat,
+                (index + 1).toString(),
+                reportData.serverDate,
+                reportData.username,
+                reportData.completionStatus,
+                reportData.cnt,
+                reportData.speedMs
+            )
         }
+
+        return listOf(header) + lines
     }
+
 }

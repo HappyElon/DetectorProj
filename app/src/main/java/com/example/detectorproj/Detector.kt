@@ -22,6 +22,8 @@ import java.io.InputStreamReader
 import kotlin.properties.Delegates
 
 var maxConfToSend:Float = 0F
+var antennaConf: Float = 0F
+var moduleConf: Float = 0F
 var detectedObjectType = ""
 
 class Detector(
@@ -160,6 +162,7 @@ class Detector(
             if (maxConf > CONFIDENCE_THRESHOLD) {
                 maxConfToSend = maxConf
                 val clsName = labels[maxIdx]
+                // val tmpConf = array[maxIdx]
                 val cx = array[c] // 0
                 val cy = array[c + numElements] // 1
                 val w = array[c + numElements * 2]
@@ -282,9 +285,6 @@ class Detector(
         var module_x2: Float? = null
         var module_y1: Float? = null
         var module_y2: Float? = null
-
-        var antennaConf: Float? = null
-        var moduleConf: Float? = null
 
         var latencyTime: Long? = null
     }

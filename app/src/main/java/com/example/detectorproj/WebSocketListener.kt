@@ -74,12 +74,12 @@ open class WebSocketListener : WebSocketListener() {
             JSONObject().apply {
                 put("mlCode", 0)
                 put("coords", listOf(Detector.module_x1, Detector.module_x2, Detector.module_y1, Detector.module_y2))
-                put("conf", Detector.moduleConf)
+                put("conf", moduleConf)
             },
             JSONObject().apply {
                 put("mlCode", 1)
                 put("coords", listOf(Detector.antenna_x1, Detector.antenna_x2, Detector.antenna_y1, Detector.antenna_y2))
-                put("conf", Detector.antennaConf)
+                put("conf", antennaConf)
             }
         ))
         json.put("username", LoginActivity.global_username)
