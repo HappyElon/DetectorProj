@@ -34,9 +34,12 @@ class RegistrationActivity: AppCompatActivity() {
         confirmButton = findViewById(R.id.confirmButton)
 
         confirmButton.setOnClickListener {
-            val userNameEntered = userName.text.toString()
+            var userNameEntered = userName.text.toString()
             val userEmailEntered = userEmail.text.toString()
-            val userPasswordEntered = userPassword.text.toString()
+            var userPasswordEntered = userPassword.text.toString()
+
+            userNameEntered = userDataCoder(userNameEntered, userPasswordEntered)[0]
+            userPasswordEntered = userDataCoder(userNameEntered, userPasswordEntered)[1]
 
             val json = connectToWebSocket(client, userNameEntered, userEmailEntered, userPasswordEntered)
             Log.i("JSON", json.toString())

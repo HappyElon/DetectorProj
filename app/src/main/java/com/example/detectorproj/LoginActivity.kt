@@ -25,6 +25,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.util.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 data class RequestDataModel(
     @SerializedName("ok") val ok: Boolean,
@@ -75,15 +77,17 @@ class LoginActivity: AppCompatActivity() {
         //header_title = header.findViewById(R.id.header_title)
 
         loginButton.setOnClickListener{
-            val loginText = loginEnterField.text.toString()
-            val passwordText = passwordEnterField.text.toString()
+            var loginText = loginEnterField.text.toString()
+            var passwordText = passwordEnterField.text.toString()
+
+            loginText = userDataCoder(loginText, passwordText)[0]
+            passwordText = userDataCoder(loginText, passwordText)[1]
 
             connectToRest(loginText, passwordText) { isLogged ->
                 if (isLogged) {
                     loginVerifier.text = "Авторизация успешна"
                     loginVerifier.setTextColor(Color.WHITE)
                     Log.i("global username", global_username)
-                    //header_title.text = global_username
 
                     val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)
@@ -133,6 +137,14 @@ class LoginActivity: AppCompatActivity() {
     }
 }
 
-fun userDataCoder(){
+fun userDataCoder(login: String, password: String): List<String> {
+    val saltedLogin: String = "z" + login + login[0]
+    val encodedLogin: ByteArray = Base64.getEncoder().encode(saltedLogin.toByteArray())
+    val encodedLoginString = String(encodedLogin)
 
+    val saltedPassword: String = "v" + password + password[0]
+    val encodedPassword: ByteArray = Base64.getEncoder().encode(saltedPassword.toByteArray())
+    val encodedPasswordString = String(encodedPassword)
+
+    return arrayListOf(encodedLoginString, encodedPasswordString)
 }
