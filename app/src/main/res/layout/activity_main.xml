@@ -76,6 +76,19 @@
                     app:srcCompat="@drawable/baseline_photo_camera_24"
                     tools:ignore="SpeakableTextPresentCheck" />
 
+                <ToggleButton
+                    android:id="@+id/flashlightButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ToggleButton"
+                    android:checked="false"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.82"
+                    app:layout_constraintStart_toEndOf="@+id/takePhotoButton"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintVertical_bias="0.0" />
+
             </androidx.constraintlayout.widget.ConstraintLayout>
 
             <TextView

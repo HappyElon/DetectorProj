@@ -77,10 +77,10 @@ class LoginActivity: AppCompatActivity() {
         //header_title = header.findViewById(R.id.header_title)
 
         loginButton.setOnClickListener{
-            var loginText = loginEnterField.text.toString()
+            val loginText = loginEnterField.text.toString()
             var passwordText = passwordEnterField.text.toString()
 
-            loginText = userDataCoder(loginText, passwordText)[0]
+            // loginText = userDataCoder(loginText, passwordText)[0]
             passwordText = userDataCoder(loginText, passwordText)[1]
 
             connectToRest(loginText, passwordText) { isLogged ->

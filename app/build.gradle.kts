@@ -41,6 +41,10 @@ android {
     }
 }
 
+repositories {
+    mavenCentral()
+}
+
 dependencies {
 
     implementation("androidx.core:core-ktx:1.13.0")
@@ -77,8 +81,15 @@ dependencies {
 
     implementation("androidx.room:room-runtime:2.6.1")
     kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
 
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.github.kittinunf.fuel:fuel:2.3.1")
+
+    implementation("com.alphacephei:vosk-android:0.3.32+@aar")
+    implementation("net.java.dev.jna:jna:5.10.0@aar")
+    // implementation("com.just-ai.aimybox:core")
+    //implementation("com.justai.aimybox:core:0.11.0")
+    // implementation("com.google.android.gms:play-services-gcm:17.0.0")
 }

@@ -1,5 +1,7 @@
 package com.example.detectorproj
 
+import AppDatabase
+import User
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -15,6 +17,8 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.PersistableBundle
 import android.provider.MediaStore
+import android.speech.RecognitionListener
+import android.speech.SpeechRecognizer
 import android.util.Log
 import android.view.Gravity
 import android.view.MenuItem
@@ -23,6 +27,7 @@ import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ToggleButton
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -64,7 +69,13 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-
+import android.speech.RecognizerIntent
+import androidx.lifecycle.lifecycleScope
+import androidx.room.Room
+import org.vosk.Model
+import org.vosk.Recognizer
+import org.vosk.android.SpeechService
+import java.io.IOException
 
 @SuppressLint("StaticFieldLeak")
 lateinit var completionDetectorTextView: TextView
@@ -73,7 +84,10 @@ lateinit var takeAPhotoButton: ImageButton
 
 class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
+    val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
+
     private val PERMISSION_REQUEST_CODE = 101
+    private val REQUEST_CODE = 1
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
@@ -97,6 +111,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
     private lateinit var outputDirectory: File
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var flashlightButton: ToggleButton
 
     private val TAG = "CameraXBasic"
     private val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
@@ -106,11 +121,14 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         private const val TAG = "Camera"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = mutableListOf (
-            Manifest.permission.CAMERA
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO
         ).toTypedArray()
 
         var photoFile: File? = null
     }
+
+    private lateinit var speechService: SpeechService
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (drawerToggle.onOptionsItemSelected(item)){
@@ -134,7 +152,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
             setContentView(R.layout.activity_main)
         }
-        //startCamera()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -149,11 +166,11 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-
         // пологировать это
 
         completionDetectorTextView = findViewById(R.id.completionDetector)
         takeAPhotoButton = findViewById(R.id.takePhotoButton)
+        flashlightButton = findViewById(R.id.flashlightButton)
         previewView = findViewById(R.id.view_finder)
         root = findViewById(R.id.drawer_layout)
 
@@ -206,8 +223,63 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         takeAPhotoButton.setOnClickListener {
             takePhoto()
         }
+
         outputDirectory = getOutputDirectory()
+
+//        initSpeechRecognition()
+//        addUser()
+//        getUser()
     }
+
+    private fun addUser() {
+        lifecycleScope.launch {
+            try {
+                val user = User(id = 1, name = "John Doe", email = "john.doe@example.com", password = "password")
+                database.userDao().insert(user)
+                Log.d("AddUser", "User inserted successfully")
+            } catch (e: Exception) {
+                Log.e("AddUser", "Error inserting user", e)
+            }
+        }
+    }
+
+
+    private fun getUser() {
+        lifecycleScope.launch {
+            val user = database.userDao().getUserById(1)
+            user?.let {
+                Log.d("MainActivity", "User: ${it.name}")
+            }
+        }
+    }
+
+
+//    private fun initSpeechRecognition() {
+//        try {
+//            val model = Model("assets/model-en-us")
+//            val recognizer = Recognizer(model, 16000.0f)
+//            speechService = SpeechService(recognizer, 16000.0f)
+//            speechService.startListening(object : org.vosk.android.RecognitionListener {
+//                override fun onPartialResult(hypothesis: String?) {}
+//
+//                override fun onResult(hypothesis: String?) {
+//                    if (hypothesis != null && hypothesis.contains("сделай фото", ignoreCase = true)) {
+//                        takePhoto()
+//                    }
+//                }
+//
+//                override fun onFinalResult(hypothesis: String?) {}
+//
+//                override fun onError(exception: Exception?) {
+//                    exception?.printStackTrace()
+//                }
+//
+//                override fun onTimeout() {}
+//            })
+//        } catch (e: IOException) {
+//            e.printStackTrace()
+//        }
+//    }
 
     private fun connectToWebSocket(client: OkHttpClient){
         Log.d("WebSocket","Connecting")
@@ -283,21 +355,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         )
     }
-
-//    private fun bindListeners() {
-//        binding.apply {
-//            isGpu.setOnCheckedChangeListener { buttonView, isChecked ->
-//                cameraExecutor.submit {
-//                    detector?.setup(isGpu = isChecked)
-//                }
-//                if (isChecked) {
-//                    buttonView.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.orange))
-//                } else {
-//                    buttonView.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.gray))
-//                }
-//            }
-//        }
-//    }
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -400,23 +457,11 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         super.onDestroy()
         detector?.close()
         cameraExecutor.shutdown()
+        speechService.stop()
     }
-
-//    override fun onStart() {
-//        super.onStart()
-//        completionDetectorTextView = findViewById(R.id.completionDetector)
-//        takeAPhotoButton = findViewById(R.id.takePhotoButton)
-//        previewView = findViewById(R.id.view_finder)
-//        root = findViewById(R.id.drawer_layout)
-//    }
 
     override fun onResume() {
         super.onResume()
-
-//        completionDetectorTextView = findViewById(R.id.completionDetector)
-//        takeAPhotoButton = findViewById(R.id.takePhotoButton)
-//        previewView = findViewById(R.id.view_finder)
-//        root = findViewById(R.id.drawer_layout)
 
         if (allPermissionsGranted()){
             startCamera()
