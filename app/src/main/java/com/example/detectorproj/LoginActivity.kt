@@ -91,6 +91,10 @@ class LoginActivity: AppCompatActivity() {
 
                     val intent = Intent(this, MainActivity::class.java)
                     startActivity(intent)
+                } else {
+                    loginVerifier.text = "Неверные логин или пароль"
+                    loginVerifier.setTextColor(Color.RED)
+                    Log.i("global username", global_username)
                 }
             }
         }

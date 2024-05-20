@@ -9,4 +9,5 @@
     <color name="gray">#999</color>
     <color name="orange">#F93</color>
     <color name="green">#087501</color>
+    <color name="dark_gray">#77000000</color>
 </resources>
